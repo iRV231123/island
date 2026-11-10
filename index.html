@@ -3,79 +3,90 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>3D 互動教學小島｜國小自然</title>
+<title>3D 互動教學小島｜16關 1:1動畫版</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { overflow:hidden; font-family:"Microsoft JhengHei",sans-serif; background:#87CEEB; }
 #container { width:100vw; height:100vh; }
 #ui {
   position:fixed; top:12px; left:12px; z-index:10;
-  background:rgba(0,0,0,.55); color:#fff; padding:10px 14px;
-  border-radius:12px; font-size:15px; display:flex; align-items:center; gap:10px;
+  background:rgba(0,0,0,.6); color:#fff; padding:12px 16px;
+  border-radius:12px; font-size:15px; display:flex; align-items:center; gap:12px;
 }
-#mute-btn {
-  background:rgba(255,255,255,.2); border:none; color:#fff;
-  width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:16px;
-}
+#mute-btn { background:rgba(255,255,255,.2); border:none; color:#fff; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:16px; }
 #card {
   position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
-  width:92%; max-width:500px; background:#fff; color:#222;
-  border-radius:16px; padding:18px; z-index:20; display:none;
-  box-shadow:0 8px 32px rgba(0,0,0,.25); max-height:70vh; overflow-y:auto;
+  width:92%; max-width:480px; background:#fff; border-radius:16px;
+  padding:18px; z-index:20; display:none; box-shadow:0 8px 30px rgba(0,0,0,.3);
+  max-height:68vh; overflow-y:auto;
 }
-#card h2 { margin:0 0 8px; color:#1a5f7a; }
+#card h2 { color:#1a5f7a; margin-bottom:8px; font-size:18px; }
 #card-options button {
-  display:block; width:100%; margin:6px 0; padding:10px;
-  border:none; border-radius:8px; background:#e8f4f8; cursor:pointer; text-align:left;
+  display:block; width:100%; margin:5px 0; padding:10px;
+  border:none; border-radius:8px; background:#e8f4f8; cursor:pointer; text-align:left; font-size:14px;
 }
 #close-btn { margin-top:8px; padding:8px 16px; background:#1a5f7a; color:#fff; border:none; border-radius:8px; cursor:pointer; }
-#celebrate { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; z-index:30; }
-#celebrate-inner { background:#fff; padding:24px; border-radius:16px; max-width:400px; text-align:center; }
 </style>
 </head>
 <body>
 <div id="container"></div>
-<div id="ui">進度：<span id="prog">0</span>／6 <button id="mute-btn">🔊</button></div>
+<div id="ui">闖關進度：<span id="prog">0</span>／16 <button id="mute-btn">🔊</button></div>
 <div id="card">
   <h2 id="card-title"></h2>
   <p id="card-points"></p>
   <p id="card-question"></p>
   <div id="card-options"></div>
   <div id="card-result"></div>
-  <button id="close-btn">關閉並返回</button>
-</div>
-<div id="celebrate">
-  <div id="celebrate-inner">
-    <h1>🎉 全部完成！</h1>
-    <p>單元1：了解雲霧露霜、天氣圖與颱風。</p>
-    <p>單元2：理解熱脹冷縮、熱的傳播與保溫散熱。</p>
-    <button onclick="location.reload()" style="margin-top:12px;padding:8px 20px;background:#e67e22;color:#fff;border:none;border-radius:8px;">再玩一次</button>
-  </div>
+  <button id="close-btn">完成並繼續</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 const stations = [
-  {id:1,name:"雲霧山",pos:[8,0,3],title:"雲和霧、露和霜",points:"水蒸氣看不見；遇冷凝結成小水滴，在高空是雲、近地面是霧。",question:"雲和霧是什麼？",options:["A. 水蒸氣","B. 小水滴或冰晶","C. 煙"],answer:1},
-  {id:2,name:"氣象站",pos:[6,0,-4],title:"衛星雲圖與地面天氣圖",points:"H高氣壓常晴朗，L低氣壓常陰雨。滯留鋒造成梅雨。",question:"造成梅雨的是？",options:["A. 冷鋒","B. 暖鋒","C. 滯留鋒"],answer:2},
-  {id:3,name:"颱風海岸",pos:[2,0,7],title:"認識颱風與防颱",points:"颱風由熱帶海洋低氣壓發展而成。",question:"颱風通常在哪裡形成？",options:["A. 高山","B. 熱帶海洋","C. 沙漠"],answer:1},
-  {id:4,name:"熱脹冷縮實驗屋",pos:[-7,0,4],title:"熱脹冷縮",points:"受熱體積變大是因為粒子間距離變大。",question:"物體受熱膨脹是因為？",options:["A. 粒子變大","B. 粒子間距離變大","C. 粒子變多"],answer:1},
-  {id:5,name:"營火廣場",pos:[-9,0,-2],title:"熱的三種傳播方式",points:"太陽的熱靠輻射傳到地球。",question:"太陽的熱傳到地球靠的是？",options:["A. 傳導","B. 對流","C. 輻射"],answer:2},
-  {id:6,name:"節能小屋",pos:[-5,0,-6],title:"保溫與散熱",points:"冷空氣會下降，所以冷氣機裝在高處。",question:"冷氣機應裝在？",options:["A. 較高處","B. 較低處","C. 都一樣"],answer:0}
+  {id:1, name:"雲霧實驗", pos:[10,0,4], title:"雲和霧實驗", points:"錐形瓶裝熱水加線香，瓶口放冰袋。水蒸氣遇冷凝結成小水滴形成白霧。", question:"雲和霧是什麼？", options:["A. 水蒸氣","B. 小水滴或冰晶","C. 煙"], answer:1, type:"cloud"},
+  {id:2, name:"露的形成", pos:[8,0,-2], title:"露", points:"水蒸氣附著在高於0℃的冷物體表面凝結成露。", question:"露形成的溫度條件是？", options:["A. 低於0℃","B. 高於0℃","C. 任何溫度"], answer:1, type:"dew"},
+  {id:3, name:"霜的形成", pos:[6,0,-5], title:"霜", points:"水蒸氣在低於0℃的冷物體上凝結成霜。", question:"霜通常出現在？", options:["A. 夏天","B. 冬天清晨","C. 雨天"], answer:1, type:"frost"},
+  {id:4, name:"水循環", pos:[4,0,6], title:"水循環", points:"蒸發→上升→凝結成雲→降雨→流回海洋，不斷循環。", question:"水蒸氣上升後形成？", options:["A. 霧","B. 雲","C. 露"], answer:1, type:"cycle"},
+  {id:5, name:"衛星雲圖", pos:[2,0,8], title:"衛星雲圖", points:"白色區域代表雲層，越白代表雲越厚。", question:"衛星雲圖白色代表？", options:["A. 陸地","B. 海洋","C. 雲層"], answer:2, type:"satellite"},
+  {id:6, name:"高氣壓", pos:[0,0,5], title:"高氣壓（H）", points:"高氣壓中心空氣下沉，天氣通常晴朗。", question:"高氣壓附近天氣？", options:["A. 陰雨","B. 晴朗","C. 強風"], answer:1, type:"high"},
+  {id:7, name:"低氣壓", pos:[-2,0,3], title:"低氣壓（L）", points:"低氣壓空氣上升，容易形成雲雨。", question:"低氣壓附近容易？", options:["A. 晴朗","B. 陰雨","C. 無風"], answer:1, type:"low"},
+  {id:8, name:"冷鋒", pos:[-4,0,6], title:"冷鋒", points:"冷鋒通過後氣溫下降，常帶來降雨。", question:"冷鋒通過後氣溫？", options:["A. 上升","B. 下降","C. 不變"], answer:1, type:"coldfront"},
+  {id:9, name:"滯留鋒", pos:[-6,0,4], title:"滯留鋒", points:"滯留鋒造成5、6月梅雨連續陰雨。", question:"造成梅雨的是？", options:["A. 冷鋒","B. 暖鋒","C. 滯留鋒"], answer:2, type:"stationary"},
+  {id:10, name:"颱風形成", pos:[-8,0,7], title:"颱風形成", points:"颱風由熱帶海洋低氣壓發展而成。", question:"颱風在哪裡形成？", options:["A. 高山","B. 熱帶海洋","C. 沙漠"], answer:1, type:"typhoon"},
+  {id:11, name:"颱風強度", pos:[-9,0,2], title:"颱風分級", points:"近中心最大風速達每小時62公里以上即為颱風。", question:"颱風最低風速？", options:["A. 32 km/h","B. 62 km/h","C. 100 km/h"], answer:1, type:"intensity"},
+  {id:12, name:"防颱準備", pos:[-7,0,-2], title:"防颱準備", points:"固定物品、疏通水溝、準備避難包。", question:"颱風來前應？", options:["A. 出去玩","B. 固定物品準備避難","C. 開窗"], answer:1, type:"prepare"},
+  {id:13, name:"液體熱脹", pos:[-5,0,-5], title:"液體熱脹冷縮", points:"溫度計紅色液體遇熱上升、遇冷下降。", question:"溫度計利用？", options:["A. 固體","B. 液體熱脹冷縮","C. 氣體"], answer:1, type:"liquid"},
+  {id:14, name:"氣體熱脹", pos:[-3,0,-7], title:"氣體熱脹冷縮", points:"氣球受熱膨脹、遇冷縮小，氣體最明顯。", question:"熱脹冷縮最明顯的是？", options:["A. 固體","B. 液體","C. 氣體"], answer:2, type:"gas"},
+  {id:15, name:"熱的傳播", pos:[-1,0,-4], title:"三種傳播方式", points:"傳導、對流、輻射。太陽靠輻射。", question:"太陽熱傳到地球靠？", options:["A. 傳導","B. 對流","C. 輻射"], answer:2, type:"heat"},
+  {id:16, name:"保溫散熱", pos:[1,0,-6], title:"保溫與散熱", points:"冷空氣下降，冷氣機應裝高處。", question:"冷氣機應裝在？", options:["A. 較高處","B. 較低處","C. 都一樣"], answer:0, type:"house"}
 ];
 
-let muted = false;
+let audioCtx = null, muted = false;
+function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+function playTone(freq, dur=0.15, type="sine", vol=0.12) {
+  if (muted || !audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + dur);
+}
+function playSuccess() { playTone(523,0.1); setTimeout(()=>playTone(659,0.1),70); setTimeout(()=>playTone(784,0.2),140); }
+function playWrong() { playTone(180,0.25,"sawtooth",0.08); }
+function playClick() { playTone(880,0.05,"square",0.06); }
+
 document.getElementById("mute-btn").onclick = () => {
   muted = !muted;
   document.getElementById("mute-btn").textContent = muted ? "🔇" : "🔊";
+  if (!muted) initAudio();
 };
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
-
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 200);
-camera.position.set(0, 12, 20);
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 250);
+camera.position.set(0, 16, 24);
 
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -84,58 +95,96 @@ document.getElementById("container").appendChild(renderer.domElement);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.maxPolarAngle = Math.PI/2 - 0.05;
+controls.maxPolarAngle = Math.PI/2 - 0.04;
 controls.target.set(0, 1, 0);
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const light = new THREE.DirectionalLight(0xffffff, 0.8);
-light.position.set(10, 20, 10);
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const light = new THREE.DirectionalLight(0xffffff, 0.85);
+light.position.set(15, 28, 10);
 scene.add(light);
 
-// 海面
-const seaGeo = new THREE.PlaneGeometry(80, 80, 20, 20);
+const seaGeo = new THREE.PlaneGeometry(120, 120, 28, 28);
 const sea = new THREE.Mesh(seaGeo, new THREE.MeshStandardMaterial({color:0x1e90ff}));
 sea.rotation.x = -Math.PI/2;
 sea.position.y = -0.5;
 scene.add(sea);
 
-// 島嶼
-const island = new THREE.Mesh(new THREE.CylinderGeometry(9, 11, 1.5, 16), new THREE.MeshStandardMaterial({color:0x3a9d23}));
+const island = new THREE.Mesh(new THREE.CylinderGeometry(11, 14, 1.7, 18), new THREE.MeshStandardMaterial({color:0x3a9d23}));
 scene.add(island);
-scene.add(new THREE.Mesh(new THREE.ConeGeometry(2.5, 5, 8), new THREE.MeshStandardMaterial({color:0x8b5a2b})).translateX(6).translateY(2.5));
+scene.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(3.2, 6.5, 8), new THREE.MeshStandardMaterial({color:0x8b5a2b})), {position: new THREE.Vector3(7, 3.2, 2)}));
 
-const stationMeshes = [];
+// 角色
+const character = new THREE.Group();
+const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.75, 8), new THREE.MeshStandardMaterial({color:0x4a90e2}));
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), new THREE.MeshStandardMaterial({color:0xffdbac}));
+head.position.y = 0.65;
+character.add(body, head);
+character.position.set(0, 1.1, 0);
+scene.add(character);
+
+const stationGroups = [];
 stations.forEach(st => {
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(0.8, 12, 8),
-    new THREE.MeshStandardMaterial({color: 0xffaa44})
-  );
-  mesh.position.set(st.pos[0], 1.2, st.pos[2]);
-  mesh.userData = st;
-  scene.add(mesh);
-  stationMeshes.push(mesh);
+  const g = new THREE.Group();
+  g.position.set(...st.pos);
+  g.userData = st;
+  st.group = g;
+  st.animObjects = {};
 
-  // 簡單站名（用 Sprite）
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.18, 8), new THREE.MeshStandardMaterial({color:0xffaa44}));
+  g.add(base);
+
+  // 各關卡專屬實驗物件
+  if (st.type === "cloud") {
+    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.28, 0.9, 8), new THREE.MeshStandardMaterial({color:0xaaddff, transparent:true, opacity:0.5}));
+    bottle.position.y = 0.8;
+    g.add(bottle);
+    st.animObjects.particles = [];
+  } else if (st.type === "gas") {
+    const balloon = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 8), new THREE.MeshStandardMaterial({color:0xff6b6b}));
+    balloon.position.y = 1.2;
+    g.add(balloon);
+    st.animObjects.balloon = balloon;
+  } else if (st.type === "heat") {
+    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.7, 6), new THREE.MeshStandardMaterial({color:0xff5500, emissive:0xff3300}));
+    fire.position.y = 0.6;
+    g.add(fire);
+    st.animObjects.fire = fire;
+  } else if (st.type === "typhoon") {
+    const spiral = new THREE.Group();
+    for (let i = 0; i < 12; i++) {
+      const a = i * 0.6;
+      const r = 0.3 + i * 0.1;
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 3), new THREE.MeshLambertMaterial({color:0xffffff, transparent:true, opacity:0.8}));
+      c.position.set(Math.cos(a)*r, 0.5, Math.sin(a)*r);
+      spiral.add(c);
+    }
+    g.add(spiral);
+    st.animObjects.spiral = spiral;
+  }
+
   const canvas = document.createElement("canvas");
   canvas.width = 256; canvas.height = 64;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "rgba(0,0,0,0.7)";
-  ctx.fillRect(0, 0, 256, 64);
-  ctx.fillStyle = "white";
-  ctx.font = "bold 28px sans-serif";
+  ctx.fillStyle = "rgba(0,0,0,0.75)";
+  ctx.fillRect(0,0,256,64);
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 22px sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(st.name, 128, 40);
-  const tex = new THREE.CanvasTexture(canvas);
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: tex}));
-  sprite.position.set(st.pos[0], 2.8, st.pos[2]);
-  sprite.scale.set(3, 0.8, 1);
-  scene.add(sprite);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)}));
+  sprite.position.y = 2.5;
+  sprite.scale.set(3.5, 0.85, 1);
+  g.add(sprite);
+
+  scene.add(g);
+  stationGroups.push(g);
 });
 
 let current = null, flying = false;
 const completed = new Set();
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+let targetCharPos = new THREE.Vector3(0, 1.1, 0);
 
 function showCard(st) {
   document.getElementById("card-title").textContent = st.title;
@@ -149,14 +198,18 @@ function showCard(st) {
     b.onclick = () => {
       const res = document.getElementById("card-result");
       if (i === st.answer) {
-        res.textContent = "答對了！"; res.style.color = "green";
+        res.textContent = "答對了！闖關成功！";
+        res.style.color = "green";
+        playSuccess();
         if (!completed.has(st.id)) {
           completed.add(st.id);
           document.getElementById("prog").textContent = completed.size;
+          st.group.children[0].material.color.setHex(0x44cc44);
         }
-        if (completed.size === 6) setTimeout(() => document.getElementById("celebrate").style.display = "flex", 500);
       } else {
-        res.textContent = "再試一次！"; res.style.color = "red";
+        res.textContent = "再試一次！";
+        res.style.color = "red";
+        playWrong();
       }
     };
     box.appendChild(b);
@@ -167,41 +220,90 @@ function showCard(st) {
 
 document.getElementById("close-btn").onclick = () => {
   document.getElementById("card").style.display = "none";
-  flying = false; controls.enabled = true; current = null;
+  flying = false;
+  controls.enabled = true;
+  current = null;
 };
 
 function onClick(e) {
+  initAudio();
   const rect = renderer.domElement.getBoundingClientRect();
   const x = (e.clientX || e.touches?.[0].clientX) - rect.left;
   const y = (e.clientY || e.touches?.[0].clientY) - rect.top;
   mouse.x = (x / rect.width) * 2 - 1;
   mouse.y = -(y / rect.height) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(stationMeshes);
+  const hits = raycaster.intersectObjects(stationGroups, true);
   if (hits.length) {
-    current = hits[0].object.userData;
-    flying = true;
-    controls.enabled = false;
-    showCard(current);
+    let obj = hits[0].object;
+    while (obj && !obj.userData.id) obj = obj.parent;
+    if (obj && obj.userData.id) {
+      current = obj.userData;
+      flying = true;
+      controls.enabled = false;
+      playClick();
+      targetCharPos.set(current.pos[0] + 1.8, 1.1, current.pos[2]);
+      showCard(current);
+    }
   }
 }
 renderer.domElement.addEventListener("pointerdown", onClick);
 
+let spawnTimer = 0;
 function animate() {
   requestAnimationFrame(animate);
   const t = Date.now() * 0.001;
+  const dt = 0.016;
+  spawnTimer += dt;
 
   const pos = seaGeo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getY(i);
-    pos.setZ(i, Math.sin(x * 0.2 + t) * 0.15);
+    pos.setZ(i, Math.sin(x * 0.16 + t * 1.1) * 0.16);
   }
   pos.needsUpdate = true;
 
+  // 角色移動與呼吸
+  character.position.lerp(targetCharPos, 0.06);
+  character.children[1].position.y = 0.65 + Math.sin(t * 3) * 0.04;
+
+  // 關卡動畫
+  if (current) {
+    const st = current;
+    if (st.type === "cloud" && spawnTimer > 0.1 && st.animObjects.particles.length < 15) {
+      spawnTimer = 0;
+      const p = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 3), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.7}));
+      p.position.set(0, 1.0, 0);
+      p.userData.vy = 0.025;
+      st.group.add(p);
+      st.animObjects.particles.push(p);
+    }
+    if (st.animObjects.particles) {
+      st.animObjects.particles.forEach((p, i) => {
+        p.position.y += p.userData.vy;
+        p.material.opacity -= 0.012;
+        if (p.material.opacity <= 0) {
+          st.group.remove(p);
+          st.animObjects.particles.splice(i, 1);
+        }
+      });
+    }
+    if (st.type === "gas" && st.animObjects.balloon) {
+      const s = 1 + Math.sin(t * 2) * 0.4;
+      st.animObjects.balloon.scale.setScalar(Math.max(0.8, s));
+    }
+    if (st.type === "heat" && st.animObjects.fire) {
+      st.animObjects.fire.scale.y = 0.8 + Math.sin(t * 12) * 0.25;
+    }
+    if (st.type === "typhoon" && st.animObjects.spiral) {
+      st.animObjects.spiral.rotation.y += 0.04;
+    }
+  }
+
   if (flying && current) {
-    const target = new THREE.Vector3(current.pos[0], 5, current.pos[2] + 6);
-    camera.position.lerp(target, 0.06);
-    controls.target.lerp(new THREE.Vector3(current.pos[0], 1, current.pos[2]), 0.06);
+    const targetCam = new THREE.Vector3(current.pos[0], 5.5, current.pos[2] + 6.5);
+    camera.position.lerp(targetCam, 0.05);
+    controls.target.lerp(new THREE.Vector3(current.pos[0], 1, current.pos[2]), 0.05);
   }
 
   controls.update();
@@ -214,6 +316,7 @@ window.addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+document.body.addEventListener("pointerdown", initAudio, {once:true});
 </script>
 </body>
 </html>
