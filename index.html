@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+<title>3D 互動教學小島｜國小自然</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { overflow:hidden; font-family:"Microsoft JhengHei","PingFang TC",sans-serif; background:#87CEEB; touch-action:none; }
+#container { width:100vw; height:100vh; position:relative; }
+#ui {
+  position:fixed; top:12px; left:12px; z-index:10;
+  background:rgba(0,0,0,.55); color:#fff; padding:10px 14px;
+  border-radius:12px; font-size:15px; backdrop-filter:blur(4px);
+  display:flex; align-items:center; gap:10px;
+}
+#mute-btn {
+  background:rgba(255,255,255,.2); border:none; color:#fff;
+  width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:16px;
+}
+#card {
+  position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+  width:92%; max-width:500px; background:#fff; color:#222;
+  border-radius:16px; padding:18px 20px 14px; z-index:20;
+  box-shadow:0 8px 32px rgba(0,0,0,.25); display:none;
+  max-height:72vh; overflow-y:auto;
+}
+#card h2 { margin:0 0 8px; font-size:20px; color:#1a5f7a; }
+#card p { margin:6px 0; line-height:1.55; font-size:15px; }
+#card-options button {
+  display:block; width:100%; margin:6px 0; padding:11px;
+  font-size:15px; border:none; border-radius:8px; background:#e8f4f8;
+  cursor:pointer; text-align:left;
+}
+#card-options button:active { background:#b8e0ec; }
+#card-result { margin:10px 0; font-weight:bold; min-height:22px; }
+#close-btn {
+  margin-top:6px; padding:9px 18px; border:none; border-radius:8px;
+  background:#1a5f7a; color:#fff; cursor:pointer; font-size:14px;
+}
+#celebrate {
+  position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:30;
+  display:none; align-items:center; justify-content:center;
+}
+#celebrate-inner {
+  background:#fff; border-radius:20px; padding:28px 22px; text-align:center;
+  max-width:440px; width:90%;
+}
+#celebrate h1 { color:#e67e22; margin-bottom:10px; }
+#celebrate p { text-align:left; margin:8px 0; line-height:1.65; font-size:15px; }
+.station-label {
+  color:#fff; background:rgba(0,0,0,.7); padding:3px 8px;
+  border-radius:6px; font-size:13px; white-space:nowrap; pointer-events:none;
+  font-weight:bold;
+}
+</style>
+</head>
+<body>
+<div id="container"></div>
+<div id="ui">進度：<span id="prog">0</span>／6 <button id="mute-btn">🔊</button></div>
+<div id="card">
+  <h2 id="card-title"></h2>
+  <p id="card-points"></p>
+  <p id="card-question"></p>
+  <div id="card-options"></div>
+  <div id="card-result"></div>
+  <button id="close-btn">關閉並返回</button>
+</div>
+<div id="celebrate">
+  <div id="celebrate-inner">
+    <h1>🎉 全部完成！</h1>
+    <p><strong>單元1 多樣的天氣變化：</strong>水蒸氣遇冷凝結形成雲、霧、露、霜；學會解讀衛星雲圖與地面天氣圖，並認識颱風的形成與防颱準備。</p>
+    <p><strong>單元2 熱對物質的影響：</strong>理解熱脹冷縮原理、熱的三種傳播方式，以及保溫與散熱的應用。</p>
+    <button id="restart-btn" style="margin-top:16px;padding:10px 28px;background:#e67e22;color:#fff;border:none;border-radius:8px;font-size:16px;">再玩一次</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/examples/js/renderers/CSS2DRenderer.js"></script>
+<script>
+const stations = [
+  { id:1, name:"雲霧山", pos:[10,0,4], title:"雲和霧、露和霜",
+    points:"水蒸氣看不見；遇冷凝結成小水滴，在高空是雲、近地面是霧。水蒸氣附在高於0℃的冷物體上成露，低於0℃成霜。",
+    question:"雲和霧是什麼？", options:["A. 水蒸氣","B. 小水滴或冰晶","C. 煙"], answer:1, type:"cloud" },
+  { id:2, name:"氣象站", pos:[7,0,-5], title:"衛星雲圖與地面天氣圖",
+    points:"衛星雲圖白色代表雲層。H 是高氣壓、常晴朗；L 是低氣壓、常陰雨；等壓線越密風越強。冷鋒過後氣溫下降；滯留鋒造成5、6月梅雨。",
+    question:"造成梅雨連續陰雨的是？", options:["A. 冷鋒","B. 暖鋒","C. 滯留鋒"], answer:2, type:"weather" },
+  { id:3, name:"颱風海岸", pos:[3,0,9], title:"認識颱風與防颱",
+    points:"颱風由熱帶海洋上的低氣壓發展而成，近中心最大風速達每小時62公里以上；分輕度、中度、強烈；登陸後會減弱。事先固定物品、疏通水溝、準備避難包。",
+    question:"颱風通常在哪裡形成？", options:["A. 高山","B. 熱帶海洋","C. 沙漠"], answer:1, type:"typhoon" },
+  { id:4, name:"熱脹冷縮實驗屋", pos:[-8,0,5], title:"熱脹冷縮",
+    points:"大部分固體、液體、氣體受熱體積變大、遇冷變小。原因是粒子間的距離改變，不是粒子變大；氣體最明顯、固體最不明顯。",
+    question:"物體受熱膨脹是因為？", options:["A. 粒子變大","B. 粒子間距離變大","C. 粒子變多"], answer:1, type:"expand" },
+  { id:5, name:"營火廣場", pos:[-10,0,-2], title:"熱的三種傳播方式",
+    points:"傳導—熱經接觸由高溫傳向低溫；對流—液體和氣體受熱上升、遇冷下降而循環；輻射—不需任何物質即可傳熱，如太陽。",
+    question:"太陽的熱傳到地球靠的是？", options:["A. 傳導","B. 對流","C. 輻射"], answer:2, type:"fire" },
+  { id:6, name:"節能小屋", pos:[-6,0,-8], title:"保溫與散熱",
+    points:"減緩熱的傳播可保溫，如保溫瓶的真空層；加快熱的傳播可散熱，如屋頂通風器、搧風。冷空氣會下降，所以冷氣機裝在高處。",
+    question:"冷氣機應裝在室內哪裡？", options:["A. 較高處","B. 較低處","C. 都一樣"], answer:0, type:"house" }
+];
+
+let audioCtx = null, masterGain = null, muted = false;
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.7;
+  masterGain.connect(audioCtx.destination);
+}
+function playTone(freq, dur=0.15, type="sine", vol=0.15) {
+  if (muted || !audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+  o.connect(g); g.connect(masterGain);
+  o.start(); o.stop(audioCtx.currentTime + dur);
+}
+function playNoise(dur=0.3, vol=0.08) {
+  if (muted || !audioCtx) return;
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i=0; i<data.length; i++) data[i] = Math.random()*2-1;
+  const src = audioCtx.createBufferSource(), g = audioCtx.createGain();
+  src.buffer = buf; g.gain.value = vol;
+  src.connect(g); g.connect(masterGain); src.start();
+}
+function playSuccess() { playTone(523,0.1); setTimeout(()=>playTone(659,0.1),80); setTimeout(()=>playTone(784,0.2),160); }
+function playWrong() { playTone(180,0.25,"sawtooth",0.08); }
+function playClick() { playTone(880,0.06,"square",0.05); }
+
+document.getElementById("mute-btn").onclick = () => {
+  muted = !muted;
+  document.getElementById("mute-btn").textContent = muted ? "🔇" : "🔊";
+  if (masterGain) masterGain.gain.value = muted ? 0 : 0.7;
+  if (!muted) initAudio();
+};
+
+const container = document.getElementById("container");
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(0x87CEEB, 50, 140);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 300);
+camera.position.set(0, 15, 28);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+container.appendChild(renderer.domElement);
+
+const labelRenderer = new THREE.CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = "absolute";
+labelRenderer.domElement.style.top = "0";
+labelRenderer.domElement.style.pointerEvents = "none";
+container.appendChild(labelRenderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI/2 - 0.03;
+controls.minDistance = 4.5;
+controls.maxDistance = 60;
+controls.target.set(0, 1.2, 0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const dirLight = new THREE.DirectionalLight(0xfff4d0, 0.9);
+dirLight.position.set(20, 30, 10);
+dirLight.castShadow = true;
+scene.add(dirLight);
+
+const seaGeo = new THREE.PlaneGeometry(150, 150, 28, 28);
+const sea = new THREE.Mesh(seaGeo, new THREE.MeshStandardMaterial({ color:0x1e90ff, transparent:true, opacity:0.88 }));
+sea.rotation.x = -Math.PI/2; sea.position.y = -0.5; sea.receiveShadow = true;
+scene.add(sea);
+
+const island = new THREE.Group();
+island.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(12, 15, 1.9, 16), new THREE.MeshStandardMaterial({ color:0x3a9d23 })), { position: new THREE.Vector3(0,0.05,0), castShadow:true, receiveShadow:true }));
+island.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(3.8, 8, 8), new THREE.MeshStandardMaterial({ color:0x8b5a2b })), { position: new THREE.Vector3(9, 4, 2.5), castShadow:true }));
+scene.add(island);
+
+const clouds = [];
+for (let i=0; i<8; i++) {
+  const g = new THREE.Group();
+  for (let j=0; j<3; j++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.5+Math.random()*0.5, 5, 4), new THREE.MeshLambertMaterial({color:0xffffff, transparent:true, opacity:0.7}));
+    s.position.set((Math.random()-0.5)*1.8, 0, (Math.random()-0.5)*1.2);
+    g.add(s);
+  }
+  g.position.set((Math.random()-0.5)*40, 8+Math.random()*4, (Math.random()-0.5)*40);
+  scene.add(g); clouds.push(g);
+}
+
+const stationGroups = [];
+stations.forEach(st => {
+  const g = new THREE.Group();
+  g.position.set(...st.pos);
+  g.userData = st;
+  st.group = g;
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,0.2,8), new THREE.MeshStandardMaterial({color:0xdddddd})));
+
+  if (st.type === "cloud") {
+    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.28,1,7), new THREE.MeshStandardMaterial({color:0xaaddff, transparent:true, opacity:0.5})), { position: new THREE.Vector3(0,1,0) }));
+    st.anim = { particles: [] };
+  } else if (st.type === "weather") {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2,1.4,1.8), new THREE.MeshStandardMaterial({color:0xe8e8e8})), { position: new THREE.Vector3(0,1,0), castShadow:true }));
+    st.anim = { front: Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.1,0.18,3), new THREE.MeshBasicMaterial({color:0x2266cc})), { position: new THREE.Vector3(-0.5,1.2,1), rotation: new THREE.Euler(0,0,-Math.PI/2) }) };
+    g.add(st.anim.front);
+  } else if (st.type === "typhoon") {
+    const spiral = new THREE.Group();
+    for (let i=0; i<18; i++) {
+      const a = i*0.45, r = 0.3 + i*0.1;
+      spiral.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.18,4,3), new THREE.MeshLambertMaterial({color:0xffffff, transparent:true, opacity:0.8})), { position: new THREE.Vector3(Math.cos(a)*r, 0.2, Math.sin(a)*r) }));
+    }
+    spiral.position.y = 1; g.add(spiral);
+    st.anim = { spiral };
+  } else if (st.type === "expand") {
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.28,10,8), new THREE.MeshStandardMaterial({color:0xb87333}));
+    ball.position.set(-0.3,1.1,0); g.add(ball);
+    st.anim = { ball, phase:0 };
+  } else if (st.type === "fire") {
+    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.3,0.8,5), new THREE.MeshStandardMaterial({color:0xff5500, emissive:0xff3300}));
+    fire.position.y = 0.7; g.add(fire);
+    st.anim = { fire, particles: [] };
+  } else if (st.type === "house") {
+    g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2.2,1.6,1.8), new THREE.MeshStandardMaterial({color:0xf5deb3})), { position: new THREE.Vector3(0,1.1,0), castShadow:true }));
+    st.anim = { particles: [] };
+  }
+
+  const div = document.createElement("div");
+  div.className = "station-label";
+  div.textContent = st.name;
+  const label = new THREE.CSS2DObject(div);
+  label.position.set(0, 2.6, 0);
+  g.add(label);
+  scene.add(g);
+  stationGroups.push(g);
+});
+
+let currentStation = null, flying = false;
+const completed = new Set();
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+
+function updateProgress() { document.getElementById("prog").textContent = completed.size; }
+
+function showCard(st) {
+  document.getElementById("card-title").textContent = st.title;
+  document.getElementById("card-points").textContent = st.points;
+  document.getElementById("card-question").textContent = st.question;
+  const optDiv = document.getElementById("card-options");
+  optDiv.innerHTML = "";
+  st.options.forEach((txt, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = txt;
+    btn.onclick = () => checkAnswer(st, i);
+    optDiv.appendChild(btn);
+  });
+  document.getElementById("card-result").textContent = "";
+  document.getElementById("card").style.display = "block";
+}
+
+function checkAnswer(st, choice) {
+  const res = document.getElementById("card-result");
+  if (choice === st.answer) {
+    res.textContent = "答對了！"; res.style.color = "green";
+    playSuccess();
+    if (!completed.has(st.id)) { completed.add(st.id); updateProgress(); }
+    if (completed.size === 6) setTimeout(() => {
+      document.getElementById("card").style.display = "none";
+      document.getElementById("celebrate").style.display = "flex";
+    }, 600);
+  } else {
+    res.textContent = "再試一次！"; res.style.color = "red";
+    playWrong();
+  }
+}
+
+document.getElementById("close-btn").onclick = () => {
+  document.getElementById("card").style.display = "none";
+  flying = false; controls.enabled = true; currentStation = null;
+};
+document.getElementById("restart-btn").onclick = () => location.reload();
+
+function flyTo(st) {
+  initAudio(); playClick();
+  currentStation = st; flying = true; controls.enabled = false;
+  showCard(st);
+}
+
+function onPointer(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  pointer.x = ((cx - rect.left)/rect.width)*2 - 1;
+  pointer.y = -((cy - rect.top)/rect.height)*2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(stationGroups, true);
+  if (hits.length) {
+    let obj = hits[0].object;
+    while (obj && !obj.userData.id) obj = obj.parent;
+    if (obj && obj.userData.id) flyTo(obj.userData);
+  }
+}
+renderer.domElement.addEventListener("pointerdown", onPointer);
+renderer.domElement.addEventListener("touchstart", onPointer, {passive:false});
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  const pos = seaGeo.attributes.position;
+  for (let i=0; i<pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    pos.setZ(i, Math.sin(x*0.13 + t)*0.2 + Math.cos(y*0.1 + t*0.8)*0.15);
+  }
+  pos.needsUpdate = true;
+
+  clouds.forEach(c => { c.position.x += 0.01; if (c.position.x > 30) c.position.x = -30; });
+
+  if (currentStation) {
+    const st = currentStation;
+    if (st.type === "cloud" && Math.random()<0.3 && st.anim.particles.length < 20) {
+      const p = new THREE.Mesh(new THREE.SphereGeometry(0.06,4,3), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.6}));
+      p.position.set(0,1.3,0); p.userData.vy = 0.02;
+      st.group.add(p); st.anim.particles.push(p);
+    }
+    if (st.anim.particles) {
+      st.anim.particles.forEach((p,i) => {
+        p.position.y += p.userData.vy || 0.02;
+        p.material.opacity -= 0.01;
+        if (p.material.opacity <= 0) { st.group.remove(p); st.anim.particles.splice(i,1); }
+      });
+    }
+    if (st.type === "typhoon") st.anim.spiral.rotation.y += 0.03;
+    if (st.type === "expand") {
+      st.anim.phase = (st.anim.phase + 0.01) % 1;
+      const s = 1 + Math.sin(st.anim.phase * Math.PI * 2) * 0.6;
+      st.anim.ball.scale.setScalar(Math.max(1, s));
+      st.anim.ball.material.color.setHex(s > 1.2 ? 0xff4422 : 0xb87333);
+    }
+    if (st.type === "fire") st.anim.fire.scale.y = 0.8 + Math.sin(t*12)*0.2;
+  }
+
+  if (flying && currentStation) {
+    camera.position.lerp(currentStation.group.position.clone().add(new THREE.Vector3(0,4,8)), 0.05);
+    controls.target.lerp(currentStation.group.position, 0.05);
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+});
+document.body.addEventListener("pointerdown", initAudio, {once:true});
+</script>
+</body>
+</html>
